@@ -39,7 +39,7 @@ db.serialize(() => {
       score REAL
     )
   `);
-  
+
   db.run(`
     CREATE TABLE IF NOT EXISTS global_scores (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,10 +59,10 @@ const getTodayString = () => new Date().toISOString().split('T')[0];
 app.post('/api/daily', (req, res) => {
   const { name, score } = req.body;
   const today = getTodayString();
-  
+
   db.run('INSERT INTO daily_scores (date, name, score) VALUES (?, ?, ?)', [today, name, score], function(err) {
     if (err) return res.status(500).json({ error: err.message });
-    
+
     // Fetch top 10 today
     db.all('SELECT name, score FROM daily_scores WHERE date = ? ORDER BY score DESC LIMIT 10', [today], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });

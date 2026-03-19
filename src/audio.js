@@ -11,7 +11,7 @@ export const initAudio = () => {
 
 export const playTone = (frequency, duration = 0.5) => {
   if (!audioCtx) initAudio();
-  
+
   const oscillator = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
 
@@ -29,7 +29,7 @@ export const playTone = (frequency, duration = 0.5) => {
 
   oscillator.start();
   oscillator.stop(audioCtx.currentTime + duration);
-  
+
   return new Promise(resolve => setTimeout(resolve, duration * 1000));
 };
 
@@ -68,7 +68,7 @@ export const stopContinuousTone = () => {
   if (continuousGainNode && audioCtx && continuousOscillator) {
     continuousGainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05);
     continuousOscillator.stop(audioCtx.currentTime + 0.05);
-    
+
     setTimeout(() => {
       continuousOscillator = null;
       continuousGainNode = null;
