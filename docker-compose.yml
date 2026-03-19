@@ -4,6 +4,8 @@ services:
   tonematch:
     build: .
     ports:
-      - "8080:80"
+      - "8080:3001"
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
     container_name: tonematch-game
