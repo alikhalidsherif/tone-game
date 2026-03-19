@@ -94,8 +94,10 @@ function App() {
       const diff = Math.abs(targetNote - guessNote);
 
       // Calculate a score out of 10 for each note based on how close it is
-      // Max difference is around log2(1000) - log2(200) ≈ 2.32
-      let noteScore = 10 * (1 - (diff / 2.32));
+      // An octave is a difference of 1 in our log scale
+      // Let's say if you are an octave away or more, your score is 0
+      // So max allowable diff is 1
+      let noteScore = 10 * (1 - Math.min(diff, 1));
       score += Math.max(0, noteScore);
     }
     return score.toFixed(2);
@@ -179,10 +181,9 @@ function App() {
                   max={MAX_FREQ}
                   value={currentGuess}
                   onChange={handleSliderChange}
-                  onMouseDown={handleSliderStart}
-                  onMouseUp={handleSliderEnd}
-                  onTouchStart={handleSliderStart}
-                  onTouchEnd={handleSliderEnd}
+                  onPointerDown={handleSliderStart}
+                  onPointerUp={handleSliderEnd}
+                  onPointerCancel={handleSliderEnd}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2 font-mono">
