@@ -26,10 +26,10 @@ const freqToNote = (f) => Math.log2(f);
 function App() {
   const [phase, setPhase] = useState('home'); // home, mode-select, name-entry, lobby, memorize, recall, results
   const [mode, setMode] = useState('solo'); // solo, multiplayer, daily
-
+  
   const [targets, setTargets] = useState([]);
   const [guesses, setGuesses] = useState([]);
-
+  
   // Memorize phase state
   const [currentToneIndex, setCurrentToneIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -65,12 +65,12 @@ function App() {
     const handleGameStarted = () => {
       // Generate targets based on room ID so everyone gets the same targets
       let seed = 0;
-      // We need the current roomId from state, but since this is inside useEffect,
+      // We need the current roomId from state, but since this is inside useEffect, 
       // we use a functional update or rely on the roomId variable in scope.
       // To ensure we get the latest roomId, we should re-attach this listener when roomId changes,
       // or just calculate it directly.
     };
-
+    
     // We'll attach the listener in a separate effect that depends on roomId
     return () => {
       socket.off('roomUpdated');
@@ -85,7 +85,7 @@ function App() {
           seed += roomId.charCodeAt(i);
       }
       const rand = LCG(seed);
-      const multiTargets = Array.from({ length: NUM_TARGETS }, () =>
+      const multiTargets = Array.from({ length: NUM_TARGETS }, () => 
         Math.floor(rand() * (MAX_FREQ - MIN_FREQ + 1)) + MIN_FREQ
       );
 
@@ -111,14 +111,14 @@ function App() {
       rand = LCG(seed);
     }
 
-    return Array.from({ length: NUM_TARGETS }, () =>
+    return Array.from({ length: NUM_TARGETS }, () => 
       Math.floor(rand() * (MAX_FREQ - MIN_FREQ + 1)) + MIN_FREQ
     );
   };
 
   const handleStartMode = (selectedMode) => {
     setMode(selectedMode);
-
+    
     if (selectedMode === 'daily') {
       setPhase('name-entry');
     } else if (selectedMode === 'multiplayer') {
@@ -178,20 +178,20 @@ function App() {
       const playSequence = async () => {
         setIsPlaying(true);
         await new Promise(r => setTimeout(r, 1000));
-
+        
         for (let i = 0; i < targets.length; i++) {
           setCurrentToneIndex(i);
           await playTone(targets[i], 1);
           setCurrentToneIndex(-1);
           await new Promise(r => setTimeout(r, 500));
         }
-
+        
         setIsPlaying(false);
         setPhase('recall');
         setRecallIndex(0);
         setCurrentGuess(440);
       };
-
+      
       playSequence();
     }
   }, [phase, targets]);
@@ -228,11 +228,11 @@ function App() {
     stopContinuousTone();
     const newGuesses = [...guesses, currentGuess];
     setGuesses(newGuesses);
-
+    
     if (newGuesses.length === NUM_TARGETS) {
       setPhase('results');
       const finalScore = calculateTotalScore(newGuesses);
-
+      
       if (mode === 'multiplayer') {
         socket.emit('submitScore', roomId, finalScore);
       } else if (mode === 'daily') {
@@ -269,7 +269,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans antialiased overflow-hidden flex flex-col justify-between selection:bg-gray-200">
-
+      
       {/* Top Navigation / Brand */}
       <header className="p-6">
         <div className="text-xl font-medium tracking-tight">Dialed.</div>
@@ -277,7 +277,7 @@ function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-6">
-
+        
         {phase === 'home' && (
           <div className="bg-black text-white p-10 md:p-14 rounded-3xl max-w-lg w-full shadow-2xl space-y-8">
             <h1 className="text-6xl md:text-8xl font-medium tracking-tighter mb-4">
@@ -289,25 +289,25 @@ function App() {
             <p className="text-gray-300 leading-relaxed text-sm md:text-base">
               We’ll play five tones, then you’ll try and recreate them.
             </p>
-
+            
             <div className="pt-4">
               <div className="font-medium mb-4 text-sm">Solo or multiplayer?</div>
               <div className="flex gap-4">
-                <button
+                <button 
                   onClick={() => handleStartMode('solo')}
                   className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:bg-gray-200 transition-colors"
                   aria-label="Solo"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 </button>
-                <button
+                <button 
                   onClick={() => handleStartMode('multiplayer')}
                   className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:bg-gray-200 transition-colors"
                   aria-label="Multiplayer"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                 </button>
-                <button
+                <button 
                   onClick={() => handleStartMode('daily')}
                   className="w-16 h-16 rounded-full border border-gray-600 bg-transparent flex items-center justify-center hover:bg-gray-900 transition-colors group relative"
                   aria-label="Daily Challenge"
@@ -323,7 +323,7 @@ function App() {
         {phase === 'name-entry' && (
           <div className="bg-black text-white p-10 md:p-14 rounded-3xl max-w-lg w-full shadow-2xl space-y-8">
             <h2 className="text-3xl font-medium tracking-tight">Enter your name</h2>
-            <input
+            <input 
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
@@ -331,10 +331,10 @@ function App() {
               placeholder="Your name"
               autoFocus
             />
-
+            
             <div className="space-y-4 pt-4">
               {mode === 'daily' ? (
-                <button
+                <button 
                   onClick={startDailyGame}
                   disabled={!playerName.trim()}
                   className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors"
@@ -343,23 +343,23 @@ function App() {
                 </button>
               ) : (
                 <>
-                 <button
+                 <button 
                   onClick={handleCreateRoom}
                   disabled={!playerName.trim()}
                   className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors"
                 >
                   Create Game
                 </button>
-
+                
                 <div className="flex gap-2">
-                  <input
+                  <input 
                     type="text"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
                     className="flex-1 bg-transparent border border-gray-600 rounded-full px-4 text-sm focus:border-white outline-none"
                     placeholder="Paste Room ID"
                   />
-                  <button
+                  <button 
                     onClick={handleJoinRoom}
                     disabled={!playerName.trim() || !roomId.trim()}
                     className="px-6 py-3 border border-gray-600 rounded-full hover:bg-gray-800 disabled:opacity-50 text-sm transition-colors"
@@ -397,7 +397,7 @@ function App() {
                 </ul>
              </div>
 
-             <button
+             <button 
                 onClick={handleStartMultiplayerGame}
                 className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 transition-colors"
               >
@@ -409,22 +409,22 @@ function App() {
         {phase === 'memorize' && (
           <div className="flex flex-col items-center justify-center space-y-16 w-full max-w-2xl">
              <h2 className="text-3xl font-medium tracking-tight">Listen carefully</h2>
-
+             
              <div className="flex justify-center gap-4 my-16">
                {targets.map((_, i) => (
-                 <div
-                   key={i}
+                 <div 
+                   key={i} 
                    className={`w-12 h-12 rounded-full transition-colors duration-300 ${
-                     i === currentToneIndex
-                       ? 'bg-black'
-                       : i < currentToneIndex
-                         ? 'bg-gray-800'
+                     i === currentToneIndex 
+                       ? 'bg-black' 
+                       : i < currentToneIndex 
+                         ? 'bg-gray-800' 
                          : 'bg-[#222934]'
                    }`}
                  />
                ))}
              </div>
-
+             
              <p className="text-gray-500 text-sm">
                {isPlaying ? "Playing sequence..." : "Get ready..."}
              </p>
@@ -444,10 +444,10 @@ function App() {
               </div>
 
               <div className="relative pt-2">
-                <input
-                  type="range"
-                  min={MIN_FREQ}
-                  max={MAX_FREQ}
+                <input 
+                  type="range" 
+                  min={MIN_FREQ} 
+                  max={MAX_FREQ} 
                   value={currentGuess}
                   onChange={handleSliderChange}
                   onPointerDown={handleSliderStart}
@@ -461,7 +461,7 @@ function App() {
                 </div>
               </div>
 
-              <button
+              <button 
                 onClick={submitGuess}
                 className="w-full py-4 bg-white text-black rounded-xl font-medium hover:bg-gray-200 transition-colors"
               >
@@ -495,7 +495,7 @@ function App() {
                           <div className="font-mono">{target} Hz</div>
                         </div>
                       </div>
-
+                      
                       <div className="text-right">
                         <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Your Guess</div>
                         <div className="font-mono">{guess} Hz</div>
@@ -505,7 +505,7 @@ function App() {
                 })}
               </div>
 
-              <button
+              <button 
                 onClick={() => setPhase('home')}
                 className="px-8 py-4 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-colors"
               >
@@ -531,7 +531,7 @@ function App() {
                 </ul>
               </div>
             )}
-
+            
             {mode === 'daily' && (
                <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100">
                  <h3 className="text-xl font-medium mb-6">Daily Leaderboard</h3>
