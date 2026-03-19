@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { initAudio, playTone, startContinuousTone, updateContinuousTone, stopContinuousTone } from './audio';
 import { io } from 'socket.io-client';
 
@@ -61,15 +61,6 @@ function App() {
     socket.on('roomUpdated', (players) => {
       setRoomPlayers(players);
     });
-
-    const handleGameStarted = () => {
-      // Generate targets based on room ID so everyone gets the same targets
-      let seed = 0;
-      // We need the current roomId from state, but since this is inside useEffect,
-      // we use a functional update or rely on the roomId variable in scope.
-      // To ensure we get the latest roomId, we should re-attach this listener when roomId changes,
-      // or just calculate it directly.
-    };
 
     // We'll attach the listener in a separate effect that depends on roomId
     return () => {
