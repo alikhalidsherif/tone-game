@@ -1,16 +1,22 @@
-# React + Vite
+# ToneMatch Game
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A minimalist sound-frequency matching game.
 
-Currently, two official plugins are available:
+## Features
+* **Gameplay:** A perfect sound-frequency matching game. You listen to 5 tones, then try to recreate them with a slider. Scoring is based on human logarithmic pitch perception.
+* **Solo Mode:** Play locally against yourself.
+* **Multiplayer Mode:** Generate a shareable link. When friends join, you click "Start Game" and everyone starts simultaneously. Scores update in real-time as friends finish!
+* **Daily Challenge:** A globally seeded sequence (changes every 24 hours UTC). Submit your score to a global SQLite leaderboard and see the Top 10 instantly.
+* **Aesthetic:** A spotless, high-contrast, black-and-white minimalist UI.
+* **Docker & CI/CD:** A multi-stage `Dockerfile` and `docker-compose.yml` for instant deployments, complete with a GitHub Actions workflow `.github/workflows/deploy.yml` configured for your self-hosted runner.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Quick Start
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Docker Deployment
+```bash
+docker-compose up --build -d
+```
