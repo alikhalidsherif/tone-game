@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { initAudio, playTone, startContinuousTone, updateContinuousTone, stopContinuousTone } from './audio';
 import { io } from 'socket.io-client';
 
@@ -62,15 +62,6 @@ function App() {
       setRoomPlayers(players);
     });
 
-    const handleGameStarted = () => {
-      // Generate targets based on room ID so everyone gets the same targets
-      let seed = 0;
-      // We need the current roomId from state, but since this is inside useEffect,
-      // we use a functional update or rely on the roomId variable in scope.
-      // To ensure we get the latest roomId, we should re-attach this listener when roomId changes,
-      // or just calculate it directly.
-    };
-
     // We'll attach the listener in a separate effect that depends on roomId
     return () => {
       socket.off('roomUpdated');
@@ -107,7 +98,9 @@ function App() {
     if (isDaily) {
       // Seed based on current date (UTC)
       const now = new Date();
-      const seed = parseInt(`${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}`);
+      const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(now.getUTCDate()).padStart(2, '0');
+      const seed = parseInt(`${now.getUTCFullYear()}${m}${d}`);
       rand = LCG(seed);
     }
 
