@@ -98,7 +98,9 @@ function App() {
     if (isDaily) {
       // Seed based on current date (UTC)
       const now = new Date();
-      const seed = parseInt(`${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}`);
+      const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(now.getUTCDate()).padStart(2, '0');
+      const seed = parseInt(`${now.getUTCFullYear()}${m}${d}`);
       rand = LCG(seed);
     }
 
