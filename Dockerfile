@@ -31,6 +31,12 @@ COPY --from=builder /app/dist ./dist
 # Copy the server file
 COPY server.js .
 
+# Create data directory and set permissions for non-root user
+RUN mkdir -p /app/data && chown -R node:node /app/data
+
+# Use non-root user
+USER node
+
 # Expose port 3001 (Node server)
 EXPOSE 3001
 
