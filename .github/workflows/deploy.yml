@@ -1,6 +1,7 @@
 name: Deploy to Homelab Server
 
 on:
+  workflow_dispatch: 
   push:
     branches: [ main ] # Or your primary branch
 
