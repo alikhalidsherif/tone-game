@@ -82,19 +82,35 @@ app.get('/api/daily/leaderboard', (req, res) => {
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  socket.on('createRoom', (callback) => {
+  socket.on('createRoom', (playerName, callback) => {
     const roomId = uuidv4().slice(0, 8); // Short ID
-    rooms[roomId] = { players: [] };
-    socket.join(roomId);
+    rooms[roomId] = {
+      players: [],
+      creator: playerName,
+      createdAt: Date.now()
+    };
     callback(roomId);
+  });
+
+  socket.on('getRoomInfo', (roomId, callback) => {
+    if (rooms[roomId]) {
+      callback({
+        exists: true,
+        creator: rooms[roomId].creator
+      });
+    } else {
+      callback({ exists: false });
+    }
   });
 
   socket.on('joinRoom', (roomId, playerName, callback) => {
     if (rooms[roomId]) {
       socket.join(roomId);
-      rooms[roomId].players.push({ id: socket.id, name: playerName, score: null, status: 'playing' });
+      // Remove any existing player with same ID (reconnect)
+      rooms[roomId].players = rooms[roomId].players.filter(p => p.id !== socket.id);
+      rooms[roomId].players.push({ id: socket.id, name: playerName, score: null, status: 'lobby' });
       io.to(roomId).emit('roomUpdated', rooms[roomId].players);
-      callback({ success: true });
+      callback({ success: true, creator: rooms[roomId].creator });
     } else {
       callback({ success: false, error: 'Room not found' });
     }
