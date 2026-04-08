@@ -26,6 +26,15 @@ const freqToNote = (f) => Math.log2(f);
 function App() {
   const [phase, setPhase] = useState('home'); // home, mode-select, name-entry, lobby, memorize, recall, results
   const [mode, setMode] = useState('solo'); // solo, multiplayer, daily
+  const [difficulty, setDifficulty] = useState('hard'); // easy, hard
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light';
+  });
 
   const [targets, setTargets] = useState([]);
   const [guesses, setGuesses] = useState([]);
@@ -39,10 +48,21 @@ function App() {
   const [currentGuess, setCurrentGuess] = useState(440);
 
   // Multiplayer State
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(() => localStorage.getItem('playerName') || '');
   const [roomId, setRoomId] = useState('');
+  const [roomCreator, setRoomCreator] = useState('');
+  const [isJoiningViaLink, setIsJoiningViaLink] = useState(false);
   const [roomPlayers, setRoomPlayers] = useState([]);
   const [dailyLeaderboard, setDailyLeaderboard] = useState([]);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -51,10 +71,27 @@ function App() {
       setRoomId(roomParam);
       setMode('multiplayer');
       setPhase('name-entry');
+      setIsJoiningViaLink(true);
+      socket.emit('getRoomInfo', roomParam, (info) => {
+        if (info.exists) {
+          setRoomCreator(info.creator);
+        }
+      });
       // Clean up URL so user doesn't stay on it forever
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      const lastRoom = localStorage.getItem('lastRoomId');
+      if (lastRoom) {
+        // Option to rejoin or just set it
+        // For now just setting it to recall
+        // setRoomId(lastRoom);
+      }
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('playerName', playerName);
+  }, [playerName]);
 
   useEffect(() => {
     // Socket event listeners
@@ -68,30 +105,22 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const handleGameStarted = () => {
-      if (!roomId) return;
-      let seed = 0;
-      for (let i = 0; i < roomId.length; i++) {
-          seed += roomId.charCodeAt(i);
-      }
-      const rand = LCG(seed);
-      const multiTargets = Array.from({ length: NUM_TARGETS }, () =>
-        Math.floor(rand() * (MAX_FREQ - MIN_FREQ + 1)) + MIN_FREQ
-      );
+  const startMultiplayerGameLocal = () => {
+    if (!roomId) return;
+    let seed = 0;
+    for (let i = 0; i < roomId.length; i++) {
+        seed += roomId.charCodeAt(i);
+    }
+    const rand = LCG(seed);
+    const multiTargets = Array.from({ length: NUM_TARGETS }, () =>
+      Math.floor(rand() * (MAX_FREQ - MIN_FREQ + 1)) + MIN_FREQ
+    );
 
-      setTargets(multiTargets);
-      setGuesses([]);
-      setPhase('memorize');
-      initAudio();
-    };
-
-    socket.on('gameStarted', handleGameStarted);
-
-    return () => {
-      socket.off('gameStarted', handleGameStarted);
-    };
-  }, [roomId]);
+    setTargets(multiTargets);
+    setGuesses([]);
+    setPhase('memorize');
+    initAudio();
+  };
 
   const generateTargets = (isDaily = false) => {
     let rand = Math.random;
@@ -138,10 +167,13 @@ function App() {
   const handleCreateRoom = () => {
     if (!playerName.trim()) return;
     initAudio(); // Initialize audio context on user gesture
-    socket.emit('createRoom', (newRoomId) => {
+    socket.emit('createRoom', playerName, (newRoomId) => {
       setRoomId(newRoomId);
       socket.emit('joinRoom', newRoomId, playerName, (res) => {
-        if (res.success) setPhase('lobby');
+        if (res.success) {
+          setRoomCreator(res.creator);
+          setPhase('lobby');
+        }
       });
     });
   };
@@ -150,13 +182,13 @@ function App() {
     if (!playerName.trim() || !roomId.trim()) return;
     initAudio(); // Initialize audio context on user gesture
     socket.emit('joinRoom', roomId, playerName, (res) => {
-      if (res.success) setPhase('lobby');
+      if (res.success) {
+        setRoomCreator(res.creator);
+        setPhase('lobby');
+        localStorage.setItem('lastRoomId', roomId);
+      }
       else alert('Room not found');
     });
-  };
-
-  const handleStartMultiplayerGame = () => {
-    socket.emit('startGame', roomId);
   };
 
   const copyInviteLink = () => {
@@ -167,27 +199,40 @@ function App() {
   };
 
   useEffect(() => {
-    if (phase === 'memorize') {
-      const playSequence = async () => {
-        setIsPlaying(true);
-        await new Promise(r => setTimeout(r, 1000));
-
-        for (let i = 0; i < targets.length; i++) {
-          setCurrentToneIndex(i);
-          await playTone(targets[i], 1);
-          setCurrentToneIndex(-1);
+    if (phase === 'memorize' && targets.length > 0) {
+      if (difficulty === 'easy') {
+        const playEasyTone = async () => {
+          setIsPlaying(true);
           await new Promise(r => setTimeout(r, 500));
-        }
+          setCurrentToneIndex(recallIndex);
+          await playTone(targets[recallIndex], 1);
+          setCurrentToneIndex(-1);
+          setIsPlaying(false);
+          setPhase('recall');
+          setCurrentGuess(440);
+        };
+        playEasyTone();
+      } else {
+        const playSequence = async () => {
+          setIsPlaying(true);
+          await new Promise(r => setTimeout(r, 1000));
 
-        setIsPlaying(false);
-        setPhase('recall');
-        setRecallIndex(0);
-        setCurrentGuess(440);
-      };
+          for (let i = 0; i < targets.length; i++) {
+            setCurrentToneIndex(i);
+            await playTone(targets[i], 1);
+            setCurrentToneIndex(-1);
+            await new Promise(r => setTimeout(r, 500));
+          }
 
-      playSequence();
+          setIsPlaying(false);
+          setPhase('recall');
+          setRecallIndex(0);
+          setCurrentGuess(440);
+        };
+        playSequence();
+      }
     }
-  }, [phase, targets]);
+  }, [phase, targets, difficulty, recallIndex]);
 
   const handleSliderChange = (e) => {
     const val = parseInt(e.target.value, 10);
@@ -224,6 +269,7 @@ function App() {
 
     if (newGuesses.length === NUM_TARGETS) {
       setPhase('results');
+      setRecallIndex(0);
       const finalScore = calculateTotalScore(newGuesses);
 
       if (mode === 'multiplayer') {
@@ -248,6 +294,9 @@ function App() {
     } else {
       setRecallIndex(recallIndex + 1);
       setCurrentGuess(440);
+      if (difficulty === 'easy') {
+        setPhase('memorize');
+      }
     }
   };
 
@@ -260,12 +309,27 @@ function App() {
     }
   }, [mode, phase, dailyLeaderboard.length]);
 
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   return (
-    <div className="min-h-screen bg-white text-black font-sans antialiased overflow-hidden flex flex-col justify-between selection:bg-gray-200">
+    <div className={`min-h-screen bg-white text-black dark:bg-[#0a0a0a] dark:text-white font-sans antialiased overflow-hidden flex flex-col justify-between selection:bg-gray-200 dark:selection:bg-gray-800 transition-colors duration-300`}>
 
       {/* Top Navigation / Brand */}
-      <header className="p-6">
-        <div className="text-xl font-medium tracking-tight">Dialed.</div>
+      <header className="p-6 flex justify-between items-center">
+        <div className="text-xl font-medium tracking-tight">toned.</div>
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+          aria-label="Toggle Theme"
+        >
+          {theme === 'light' ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          )}
+        </button>
       </header>
 
       {/* Main Content Area */}
@@ -283,9 +347,28 @@ function App() {
               We’ll play five tones, then you’ll try and recreate them.
             </p>
 
-            <div className="pt-4">
-              <div className="font-medium mb-4 text-sm">Solo or multiplayer?</div>
-              <div className="flex gap-4">
+            <div className="pt-4 space-y-6">
+              <div>
+                <div className="font-medium mb-4 text-sm">Difficulty</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setDifficulty('easy')}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${difficulty === 'easy' ? 'bg-white text-black' : 'bg-transparent text-gray-400 border border-gray-700'}`}
+                  >
+                    Easy
+                  </button>
+                  <button
+                    onClick={() => setDifficulty('hard')}
+                    className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${difficulty === 'hard' ? 'bg-white text-black' : 'bg-transparent text-gray-400 border border-gray-700'}`}
+                  >
+                    Hard
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div className="font-medium mb-4 text-sm">Solo or multiplayer?</div>
+                <div className="flex gap-4">
                 <button
                   onClick={() => handleStartMode('solo')}
                   className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -311,11 +394,14 @@ function App() {
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {phase === 'name-entry' && (
           <div className="bg-black text-white p-10 md:p-14 rounded-3xl max-w-lg w-full shadow-2xl space-y-8">
-            <h2 className="text-3xl font-medium tracking-tight">Enter your name</h2>
+            <h2 className="text-3xl font-medium tracking-tight">
+              {isJoiningViaLink ? `Join ${roomCreator ? roomCreator + "'s" : "the"} lobby` : 'Enter your name'}
+            </h2>
             <input
               type="text"
               value={playerName}
@@ -333,6 +419,14 @@ function App() {
                   className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors"
                 >
                   Start Daily Challenge
+                </button>
+              ) : isJoiningViaLink ? (
+                <button
+                  onClick={handleJoinRoom}
+                  disabled={!playerName.trim()}
+                  className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  Join Lobby
                 </button>
               ) : (
                 <>
@@ -363,7 +457,7 @@ function App() {
                 </>
               )}
             </div>
-            <button onClick={() => setPhase('home')} className="text-sm text-gray-500 hover:text-white underline underline-offset-4">Back</button>
+            <button onClick={() => { setPhase('home'); setIsJoiningViaLink(false); setRoomId(''); }} className="text-sm text-gray-500 hover:text-white underline underline-offset-4">Back</button>
           </div>
         )}
 
@@ -371,7 +465,9 @@ function App() {
           <div className="bg-black text-white p-10 md:p-14 rounded-3xl max-w-lg w-full shadow-2xl space-y-8">
              <div className="flex justify-between items-start">
                <div>
-                 <h2 className="text-3xl font-medium tracking-tight mb-2">Lobby</h2>
+                 <h2 className="text-3xl font-medium tracking-tight mb-2">
+                   {roomCreator ? `${roomCreator}'s Lobby` : 'Lobby'}
+                 </h2>
                  <p className="text-gray-400 text-sm flex items-center gap-2">
                    Room ID: <span className="text-white font-mono bg-gray-800 px-2 py-1 rounded">{roomId}</span>
                    <button onClick={copyInviteLink} className="text-xs border border-gray-600 px-2 py-1 rounded hover:bg-gray-800 transition-colors">Copy Link</button>
@@ -383,7 +479,7 @@ function App() {
                 <ul className="space-y-3">
                   {roomPlayers.map((player) => (
                     <li key={player.id} className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <div className={`w-2 h-2 rounded-full ${player.status === 'finished' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                       <span>{player.name} {player.id === socket.id ? '(You)' : ''}</span>
                     </li>
                   ))}
@@ -391,10 +487,10 @@ function App() {
              </div>
 
              <button
-                onClick={handleStartMultiplayerGame}
+                onClick={startMultiplayerGameLocal}
                 className="w-full py-4 bg-white text-black rounded-full font-medium hover:bg-gray-200 transition-colors"
               >
-                Start Game for Everyone
+                Start Game
               </button>
           </div>
         )}
@@ -553,8 +649,11 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="p-6 flex justify-between items-center text-xs text-gray-400">
-        <div>Made by Jules • Tone Match Game</div>
+      <footer className="p-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 gap-4">
+        <div className="text-center md:text-left">
+          <p>Made by AshReef Labs • Tone Match Game</p>
+          <p className="mt-1 opacity-75">a just for fun copy of the original dialed.gg site</p>
+        </div>
         <div className="flex items-center gap-4">
           <span>Turn your volume up</span>
         </div>
