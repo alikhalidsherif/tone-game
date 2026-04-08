@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
+# Install build dependencies for native modules (like sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Install dependencies
 RUN npm ci
 
@@ -23,13 +26,23 @@ WORKDIR /app
 
 # Copy package.json and install PROD dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ \
+    && npm ci --only=production \
+    && apk del python3 make g++
 
 # Copy built frontend assets
 COPY --from=builder /app/dist ./dist
 
 # Copy the server file
 COPY server.js .
+
+# Create data directory and set permissions for non-root user
+RUN mkdir -p /app/data && chown -R node:node /app/data
+
+# Use non-root user
+USER node
 
 # Expose port 3001 (Node server)
 EXPOSE 3001
